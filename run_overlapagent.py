@@ -29,13 +29,14 @@ def get_log_path(job_id: int):
 
 
 def main(
-    job_id: int,
+    slurm_job_id,
     filename: str,
     num_loops: int = 100,
     object_data_exists: bool = False,
     actions_per_zone: int = 500,
 ):
-
+    job_id = str(slurm_job_id)
+    print(f"job_id={job_id}")
     sim_env = SimulationEnvironment(
         # pos_csv_filename="16102021_083647_5_overlap_66_data.csv",
         pos_csv_filename=filename,
@@ -53,7 +54,7 @@ def main(
 
     overlap_agent._update_space()
 
-    log_path = get_log_path(job_id)
+    log_path = get_log_path(str(job_id))
     print(f"log_path: {log_path}")
 
     write_to_log(
@@ -74,8 +75,6 @@ def main(
     for t_idx, time_limit in enumerate(time_limits):
 
         overlap_agent.time_limit = time_limit
-
-        action_limit = overlap_agent.time_limit * 5
 
         # max_time = action_limit / 20
 
@@ -98,7 +97,10 @@ def main(
                 datetime.now(),
                 job_id,
                 t_idx,
-                (action_limit * overlap_agent.area_strategy.total_zones),
+                (
+                    overlap_agent.time_limit
+                    * overlap_agent.area_strategy.total_zones
+                ),
                 round(overlap_reduction_percent, 2),
                 overlap_end,
             ],
@@ -110,9 +112,7 @@ if __name__ == "__main__":
         description="launches an overlap agent run"
     )
 
-    parser.add_argument(
-        "-job_id", help="job batch number for SLURM run", type=int, default=0,
-    )
+    parser.add_argument("-slurm_job_id", help="job array number for SLURM run")
 
     parser.add_argument(
         "-filename",
