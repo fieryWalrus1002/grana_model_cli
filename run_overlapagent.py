@@ -50,6 +50,7 @@ def main(
         area_strategy=Rings(object_list, origin_point=(200, 200)),
         collision_handler=sim_env.collision_handler,
         space=sim_env.space,
+        job_id=job_id,
     )
 
     overlap_agent._update_space()
