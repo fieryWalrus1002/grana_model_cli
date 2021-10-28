@@ -152,3 +152,6 @@ old_setup_files/
 src/grana_model/__pycache__/overlapagent.cpython-39.pyc
 .gitignore
 .gitignore
+gm_job_array.sh
+src/grana_model/__pycache__/overlapagent.cpython-39.pyc
+src/grana_model/__pycache__/overlapagent.cpython-39.pyc

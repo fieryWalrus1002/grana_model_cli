@@ -7,29 +7,29 @@ from src.grana_model.simulationenv import SimulationEnvironment
 from src.grana_model.overlapagent import OverlapAgent, Rings
 
 
-def write_to_log(log_path: str, row_data: list):
+def write_to_log(log_path: str, row_data: list, mode: str = "a"):
     """exports progress data for a job to csv"""
-    with open(log_path, "a") as fd:
+    with open(log_path, mode) as fd:
         write = csv.writer(fd)
         write.writerow(row_data)
 
 
-def get_log_path(batch_num: int,):
-    """uses the batch_num and date to create output log file"""
+def get_log_path(job_id: int):
+    """uses the job_id and date to create output log file"""
     now = datetime.now()
-    dt_string = now.strftime("%d%m%Y_%H%M%S")
+    dt_string = now.strftime("%d%m%Y_%H%M")
     return (
         Path.cwd()
         / "src"
         / "grana_model"
         / "res"
         / "log"
-        / f"{dt_string}_{batch_num}.csv"
+        / f"{dt_string}_{job_id}.csv"
     )
 
 
 def main(
-    batch_num: int,
+    job_id: int,
     filename: str,
     num_loops: int = 100,
     object_data_exists: bool = False,
@@ -53,15 +53,16 @@ def main(
 
     overlap_agent._update_space()
 
-    log_path = get_log_path(batch_num)
+    log_path = get_log_path(job_id)
     print(f"log_path: {log_path}")
 
     write_to_log(
         log_path=log_path,
+        mode="w",
         row_data=[
             "datetime",
-            "batch_num",
-            "t_idx",
+            "job_id",
+            "step_num",
             "total_actions",
             "overlap_pct",
             "overlap",
@@ -80,7 +81,7 @@ def main(
 
         # t1 = process_time()
 
-        overlap_results = overlap_agent.run(debug=False)
+        overlap_results = overlap_agent.run(debug=False, step_num=t_idx)
 
         # elapsed_time = process_time() - t1
 
@@ -92,9 +93,10 @@ def main(
 
         write_to_log(
             log_path=log_path,
+            mode="a",
             row_data=[
                 datetime.now(),
-                batch_num,
+                job_id,
                 t_idx,
                 (action_limit * overlap_agent.area_strategy.total_zones),
                 round(overlap_reduction_percent, 2),
@@ -109,10 +111,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-batch_num",
-        help="job batch number for SLURM run",
-        type=int,
-        default=0,
+        "-job_id", help="job batch number for SLURM run", type=int, default=0,
     )
 
     parser.add_argument(

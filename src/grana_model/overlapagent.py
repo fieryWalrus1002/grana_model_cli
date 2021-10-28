@@ -227,12 +227,14 @@ class OverlapAgent:
         collision_handler: CollisionHandler,
         time_limit: int = 1000,
         area_strategy: AreaStrategy = None,
+        job_id: int = 0,
     ):
         self.time_limit = time_limit
         self.time_left = time_limit
         self.space = space
         self.overlap_distance = 0.0
         self.collision_handler = collision_handler
+        self.job_id = job_id
 
         if area_strategy is not None:
             print(f"using {area_strategy}")
@@ -243,7 +245,7 @@ class OverlapAgent:
                 object_list, origin_point=(200, 200),
             )
 
-    def run(self, debug=False):
+    def run(self, debug=False, step_num: int = 0):
         """runs the overlap agent through the zone list"""
         overlap_values = []
         for zone_num, zone_list in enumerate(self.area_strategy):
@@ -259,7 +261,7 @@ class OverlapAgent:
                 )
 
             if zone_num == self.area_strategy.total_zones - 1:
-                self.export_coordinates(zone_num, zone_list, mean_overlap)
+                self.export_coordinates(step_num, zone_list, mean_overlap)
 
         self.area_strategy.reset()
         return overlap_values
@@ -290,7 +292,7 @@ class OverlapAgent:
         self.space.step(0.01)
         self.overlap_distance = self.collision_handler.overlap_distance
 
-    def export_coordinates(self, zone_num, zone_list, mean_overlap):
+    def export_coordinates(self, step_num, zone_list, mean_overlap):
         now = datetime.now()
         dt_string = now.strftime("%d%m%Y_%H%M%S")
         filename = (
@@ -299,7 +301,7 @@ class OverlapAgent:
             / "grana_model"
             / "res"
             / "output"
-            / f"{dt_string}_{zone_num}_overlap_{int(mean_overlap)}_data.csv"
+            / f"{dt_string}_jobid_{self.job_id}_step_{step_num}_overlap_{int(mean_overlap)}_data.csv"
         )
 
         with open(filename, "w", newline="") as f:
