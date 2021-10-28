@@ -298,7 +298,7 @@ class OverlapAgent:
             / "src"
             / "grana_model"
             / "res"
-            / "grana_coordinates"
+            / "output"
             / f"{dt_string}_{zone_num}_overlap_{int(mean_overlap)}_data.csv"
         )
 
