@@ -3,6 +3,7 @@ import random
 from pymunk import Vec2d, Body, moment_for_circle, Poly, Space
 import os
 from pathlib import Path
+from .utils import pos_in_circle, rand_angle
 
 
 class PSIIStructure:
@@ -126,133 +127,42 @@ class PSIIStructure:
         if self.last_action["action"] == "move":
             self.body.position = self.last_action["old_value"]
 
-    # def action(self, action_num):
-    #     if action_num == 0:
-    #         # up
-    #         self.move("up")
-    #         pass
-    #     if action_num == 1:
-    #         # down
-    #         self.move("down")
-    #         pass
-    #     if action_num == 2:
-    #         # right
-    #         self.move("right")
-    #         pass
-    #     if action_num == 3:
-    #         # left
-    #         self.move("left")
-    #         pass
-    #     if action_num == 4:
-    #         # rotate left
-    #         self.rotate(direction=0)
-    #         pass
-    #     if action_num == 5:
-    #         # rotate right
-    #         self.rotate(direction=1)
-    #         pass
-
     def action(self, action_num):
-        if action_num <= 4:
-            self.move(random.randint(0, 3), step_dist=0.25)
-        if action_num == 5:
-            # rotate left
-            self.rotate(direction=0)
-            pass
-        if action_num == 6:
-            # rotate right
-            self.rotate(direction=1)
-            pass
+        if action_num == 1:
+            self.move()
 
-    def rotate(self, direction):
-        current_angle = self.body.angle
-        # random_angle = random() * 2 * 0.0174533
-        random_angle = random.random() * 15 * 0.0174533  # up to 15 degrees
-        if direction == 0:
-            # rotate left
-            new_angle = current_angle + random_angle
+        if action_num == 2:
+            self.rotate(degree_range=90.0)
 
-            self.last_action = {
-                "action": "rotate",
-                "old_value": current_angle,
-                "new_value": new_angle,
-            }
-        else:
-            # rotate right
-            new_angle = current_angle - random_angle
-
-            self.last_action = {
-                "action": "rotate",
-                "old_value": current_angle,
-                "new_value": new_angle,
-            }
-        # set the new angle
-        self.body.angle = new_angle
-
-    def move(self, direction, step_dist=1):
-        step_distance = random.random() * step_dist
-
-        # move in a direction but end within the tether distance
-        # body.position.x and body.position.y can be modified, but the new position has to be within the distance of 1nm in any direction from the origin point.
-        x0, y0 = self.origin_xy
-        start_pos = self.body.position
-        tether_radius = 1
-
-        # the current dist from tether, starts too high because it is updated
-        dist = 1000.0
-
-        # is this a valid location?
-        while dist > tether_radius and step_distance > 0:
-            # will start as current pos
-            x1, y1 = self.body.position
-
-            # move in a direction the step distance
-            if direction == 0:
-                y1 += step_distance
-            if direction == 1:
-                y1 -= step_distance
-            if direction == 2:
-                x1 += step_distance
-            if direction == 3:
-                x1 -= step_distance
-
-            # calculate the new distance from the tether point
-            dist = sqrt(((x0 - x1) ** 2) + ((y0 - y1) ** 2))
-
-            # each attempt will reduce the step distance a tiny amount
-            step_distance -= 0.01
-
-        # the new position is within the tether range, so lets assign it
-        # if you didn't move at all, then you didn't move so keep your existing position
-        if step_distance > 0:
-            self.body.position = (x1, y1)
-
-        # save the action so we can undo it later if needed
+    def _save_action(self, action: str, old_value, new_value):
         self.last_action = {
-            "action": "move",
-            "old_value": start_pos,
-            "new_value": self.body.position,
+            "action": action,
+            "old_value": old_value,
+            "new_value": new_value,
         }
 
-    # ### random position
-    #     # generate a new position within range of the origin, and move the object to that location
-    #     # new position
-    #     # random angle
-    #     alpha = 2 * pi * random()
+    def rotate(self, degree_range: float):
+        """ rotates the object to a random angle, plus or minus half degree_range"""
+        current_angle = self.body.angle
 
-    #     # random radius, random float between 0 to 1 * tether_radius
-    #     r = random() * tether_radius
+        self.body.angle = current_angle + rand_angle(degree_range=degree_range)
 
-    #     t = 2 * pi * random()
+        self._save_action("rotate", current_angle, self.body.angle)
 
-    #     # new (x, y) tuple
-    #     random_pos = ((r*cos(t)) + x0, y0 + (r*sin(t)))
-    #     # x1, y1 = obstacle.body.position
+    def move(self, tether_radius: float = 1.0):
+        """ handles moving the object to a new location within its tether_radius.
 
-    #     #     # calculate distance from given point
-    #     #     euc_dist = sqrt((x1-x)**2 + (y1-y)**2)
+            Also saves the current position of the object before moving it, so we can restore it if 
+            necessary, via undo()
+            
+            Parameters:
+            tether_radius: the maximum distance from the original location of the object upon instantiation.
+        """
+        start_pos = self.body.position
 
-    #     #     # if the distance is less than the radius
-    #     #     # add it to the selected obj list
-    #     #     if euc_dist <= radius:
-    #     #         sel_obj.append(obstacle)
+        self.body.position = pos_in_circle(
+            origin=self.body.position, radius=tether_radius
+        )
+
+        self._save_action("move", start_pos, self.body.position)
+
