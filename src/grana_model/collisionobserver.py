@@ -13,7 +13,7 @@ class CollisionObserver:
     def collision(self, arbiter):
         self.collision_count += 1
         arb_points_set = arbiter.contact_point_set
-        print(arb_points_set)
+        # print(arb_points_set)
 
     def draw(self, label_pos):
         collision_text = f"collision:{self.collision_count} \ntotal:{self.total_collision_count}"

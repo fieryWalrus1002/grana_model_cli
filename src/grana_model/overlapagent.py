@@ -8,7 +8,7 @@ Can be run from the command line by calling a SimulationEnvironment, or used as 
 No command line arguments are required, but are going to be implemented so I can run this on Kamiak in the future.
 
 Example:
-    $ overlap_agent = OverlapAgent(area_strategy=chosen_strategy, time_limit=1000,
+    $ overlap_agent = OverlapAgent(area_strategy=chosen_strategy, num_actions=1000,
         space=space)
     $ overlap_agent.run()
 
@@ -93,9 +93,9 @@ class Rings(AreaStrategy):
             ]
             for ring in self.zone_distances
         ]
-        print(
-            f"len(zone_list): {len(zone_list)}, len(zone_list[0]): {len(zone_list[0])}"
-        )
+        # print(
+        #     f"len(zone_list): {len(zone_list)}, len(zone_list[0]): {len(zone_list[0])}"
+        # )
 
         return zone_list
 
@@ -203,7 +203,7 @@ class OverlapAgent:
                 2. If all areas have already been included, simulation ends.
 
     Parameters:
-        time_limit (int): maximum number of actions before simulation moves to next
+        num_actions (int): maximum number of actions before simulation moves to next
         period or ends. Default=1000
 
         object_list (list of PSIIStructure): divides this list
@@ -212,8 +212,8 @@ class OverlapAgent:
         divided into multiple lists, one for each zone
 
     Attributes:
-        self.time_limit (int): as above
-        self.time_left (int): starts equal to self.time_limit, is reduced by one for each action taken
+        self.num_actions (int): as above
+        self.time_left (int): starts equal to self.num_actions, is reduced by one for each action taken
 
 
     """
@@ -225,51 +225,48 @@ class OverlapAgent:
         space: pymunk.Space,
         object_list: list,
         collision_handler: CollisionHandler,
-        time_limit: int = 1000,
+        num_actions: int = 1000,
         area_strategy: AreaStrategy = None,
         job_id: int = 0,
     ):
-        self.time_limit = time_limit
-        self.time_left = time_limit
+        self.num_actions = num_actions
+        self.time_left = num_actions
         self.space = space
         self.overlap_distance = 0.0
         self.collision_handler = collision_handler
         self.job_id = job_id
 
         if area_strategy is not None:
-            print(f"using {area_strategy}")
+            # print(f"using {area_strategy}")
             self.area_strategy = area_strategy
         else:
-            print("no area strategy provided, using ExpandingCircle")
+            # print("no area strategy provided, using ExpandingCircle")
             self.area_strategy = ExpandingCircle(
                 object_list, origin_point=(200, 200),
             )
 
-    def run(self, debug=False, step_num: int = 0):
+    def run(
+        self, num_actions: int, debug: bool = False, step_num: int = 0
+    ) -> list:
         """runs the overlap agent through the zone list"""
         overlap_values = []
-        for zone_num, zone_list in enumerate(self.area_strategy):
-            for i in range(0, self.time_limit):
+        for zone_list in self.area_strategy:
+            for _ in range(0, num_actions):
                 overlap = self._call_object(object=random.choice(zone_list))
                 overlap_values.append(overlap)
 
-            mean_overlap = sum(overlap_values[-10:-1]) / 10
-
-            if debug:
-                print(
-                    f"zone: {zone_num + 1}/5 finished, time_limit: {self.time_limit}, overlap: {round(mean_overlap, 2)}"
-                )
-
-            if zone_num == self.area_strategy.total_zones - 1:
-                self.export_coordinates(step_num, zone_list, mean_overlap)
-
         self.area_strategy.reset()
-        return overlap_values
+
+        return (
+            zone_list,
+            round(sum(overlap_values[0:9]) / 10, 2),
+            round(sum(overlap_values[-10:-1]) / 10, 2),
+        )
 
     def _call_object(self, object):
         """calls object to perform an action, evaluate it, and either keep it or undo it"""
         if type(object) is not PSIIStructure:
-            print("not a PSIIStructure")
+            # print("not a PSIIStructure")
             return
 
         object.action(random.randint(1, 6))
@@ -292,29 +289,3 @@ class OverlapAgent:
         self.space.step(0.01)
         self.overlap_distance = self.collision_handler.overlap_distance
 
-    def export_coordinates(self, step_num, zone_list, mean_overlap):
-        now = datetime.now()
-        dt_string = now.strftime("%d%m%Y_%H%M%S")
-        filename = (
-            Path.cwd()
-            / "src"
-            / "grana_model"
-            / "res"
-            / "output"
-            / f"{dt_string}_jobid_{self.job_id}_step_{step_num}_overlap_{int(mean_overlap)}_data.csv"
-        )
-
-        with open(filename, "w", newline="") as f:
-            write = csv.writer(f)
-            # write the headers
-            write.writerow(["type", "x", "y", "angle", "area"])
-            for object in zone_list:
-                write.writerow(
-                    (
-                        object.type,
-                        object.body.position[0],
-                        object.body.position[1],
-                        object.body.angle,
-                        object.area,
-                    )
-                )

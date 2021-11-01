@@ -18,13 +18,38 @@ def get_log_path(job_id: int):
     """uses the job_id and date to create output log file"""
     now = datetime.now()
     dt_string = now.strftime("%d%m%Y_%H%M")
-    return (
+    return Path.cwd() / "log" / f"{dt_string}_{job_id}.csv"
+
+
+def export_coordinates(job_id, step_num, zone_list, mean_overlap):
+    now = datetime.now()
+    dt_string = now.strftime("%d%m%Y_%H%M%S")
+    filename = (
         Path.cwd()
-        / "src"
-        / "grana_model"
-        / "res"
-        / "log"
-        / f"{dt_string}_{job_id}.csv"
+        / "output"
+        / f"{dt_string}_jobid_{job_id}_step_{step_num}_overlap_{int(mean_overlap)}_data.csv"
+    )
+
+    with open(filename, "w", newline="") as f:
+        write = csv.writer(f)
+        # write the headers
+        write.writerow(["type", "x", "y", "angle", "area"])
+        for object in zone_list:
+            write.writerow(
+                (
+                    object.type,
+                    round(object.body.position[0], 2),
+                    round(object.body.position[1], 2),
+                    round(object.body.angle, 2),
+                    round(object.area, 2),
+                )
+            )
+
+
+def get_overlap_reduction_percent(overlap_begin, overlap_end):
+    """ calculate and return the percent reduction from this iteration """
+    return round(
+        (overlap_begin - overlap_end) / (overlap_begin + 0.0001) * 100, 2
     )
 
 
@@ -36,7 +61,7 @@ def main(
     actions_per_zone: int = 500,
 ):
     job_id = str(slurm_job_id)
-    print(f"job_id={job_id}")
+    # print(f"job_id={job_id}")
     sim_env = SimulationEnvironment(
         # pos_csv_filename="16102021_083647_5_overlap_66_data.csv",
         pos_csv_filename=filename,
@@ -53,10 +78,10 @@ def main(
         job_id=job_id,
     )
 
-    overlap_agent._update_space()
+    _init_overlap = overlap_agent._update_space()
 
     log_path = get_log_path(str(job_id))
-    print(f"log_path: {log_path}")
+    # print(f"log_path: {log_path}")
 
     write_to_log(
         log_path=log_path,
@@ -71,41 +96,29 @@ def main(
         ],
     )
 
-    time_limits = [actions_per_zone for _ in range(0, num_loops)]
+    for step_num in range(0, num_loops):
 
-    for t_idx, time_limit in enumerate(time_limits):
-
-        overlap_agent.time_limit = time_limit
-
-        # max_time = action_limit / 20
-
-        # t1 = process_time()
-
-        overlap_results = overlap_agent.run(debug=False, step_num=t_idx)
-
-        # elapsed_time = process_time() - t1
-
-        overlap_begin = sum(overlap_results[0:9]) / 10
-        overlap_end = sum(overlap_results[-10:-1]) / 10
-        overlap_reduction_percent = (
-            (overlap_begin - overlap_end) / (overlap_begin + 0.1)
-        ) * 100
+        object_list_p, overlap_begin, overlap_end = overlap_agent.run(
+            num_actions=actions_per_zone, step_num=step_num
+        )
 
         write_to_log(
             log_path=log_path,
             mode="a",
             row_data=[
-                datetime.now(),
+                datetime.now().strftime("%d/%m/%Y_%H:%M:%S"),
                 job_id,
-                t_idx,
+                step_num,
                 (
-                    overlap_agent.time_limit
+                    overlap_agent.num_actions
                     * overlap_agent.area_strategy.total_zones
                 ),
-                round(overlap_reduction_percent, 2),
+                get_overlap_reduction_percent(overlap_begin, overlap_end),
                 overlap_end,
             ],
         )
+
+        export_coordinates(job_id, step_num, object_list_p, overlap_end)
 
 
 if __name__ == "__main__":

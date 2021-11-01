@@ -138,7 +138,7 @@ class ObjectData:
             structure_types, len(self.pos_list), replace=True, p=structure_p
         )
         random_pos_list = random.sample(self.pos_list, len(self.pos_list))
-        print(len(random_pos_list))
+        # print(len(random_pos_list))
 
         for pos, obj_type in zip(random_pos_list, obj_types):
             obj_entry = {

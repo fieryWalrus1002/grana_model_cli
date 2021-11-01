@@ -78,7 +78,7 @@ class Spawner:
                 obj = next(self.object_data.object_list)
             except StopIteration:
                 return object_list
-            # print(obj)
+            # #print(obj)
             # if obj.get("obj_type") == "C2S2M2":
             object_list.append(
                 PSIIStructure(
