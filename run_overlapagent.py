@@ -2,9 +2,10 @@ import argparse
 import csv
 from datetime import datetime
 from pathlib import Path
+from time import process_time
 
-from src.grana_model.simulationenv import SimulationEnvironment
 from src.grana_model.overlapagent import OverlapAgent, Rings
+from src.grana_model.simulationenv import SimulationEnvironment
 
 
 def write_to_log(log_path: str, row_data: list, mode: str = "a"):
@@ -17,7 +18,7 @@ def write_to_log(log_path: str, row_data: list, mode: str = "a"):
 def get_log_path(job_id: int):
     """uses the job_id and date to create output log file"""
     now = datetime.now()
-    dt_string = now.strftime("%d%m%Y_%H%M")
+    dt_string = now.strftime("%d%m%Y_%H%M%S")
     return Path.cwd() / "log" / f"{dt_string}_{job_id}.csv"
 
 
@@ -93,10 +94,12 @@ def main(
             "total_actions",
             "overlap_pct",
             "overlap",
+            "process_time",
         ],
     )
 
     for step_num in range(0, num_loops):
+        start_time = process_time()
 
         object_list_p, overlap_begin, overlap_end = overlap_agent.run(
             num_actions=actions_per_zone, step_num=step_num
@@ -115,6 +118,7 @@ def main(
                 ),
                 get_overlap_reduction_percent(overlap_begin, overlap_end),
                 overlap_end,
+                round(process_time() - start_time, 3),
             ],
         )
 
